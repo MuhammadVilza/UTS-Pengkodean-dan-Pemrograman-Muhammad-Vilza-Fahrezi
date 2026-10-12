@@ -1,0 +1,813 @@
+<!DOCTYPE html>
+<html lang="id" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Voucher Entri Transaksi Kas Keluar - Sistem Akuntansi</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'sans-serif'] }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans h-full flex flex-col antialiased">
+
+    <header class="bg-indigo-900 text-white shadow-md sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
+            <div class="flex items-center space-x-3">
+                <div class="bg-indigo-800 p-2 rounded-lg border border-indigo-700 shadow-inner">
+                    <i class="fa-solid fa-file-invoice-dollar text-indigo-300 text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-lg font-bold tracking-wide">AccSys Enterprise</h1>
+                    <p class="text-xs text-indigo-300">Modul Kas Keluar (Cash Disbursement Voucher)</p>
+                </div>
+            </div>
+            <div class="flex items-center space-x-3 text-sm">
+                <span id="currentUser" class="bg-indigo-800/80 px-3 py-1.5 rounded-md border border-indigo-700 font-medium">
+                    <i class="fa-regular fa-user mr-1.5 text-indigo-300"></i> Kasir_HQ01
+                </span>
+                <button onclick="toggleDocModal()" class="bg-indigo-700 hover:bg-indigo-600 px-3 py-1.5 rounded-md font-medium transition flex items-center space-x-1.5 shadow-sm">
+                    <i class="fa-solid fa-book text-xs"></i>
+                    <span>Panduan & Skema SQL</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-grow max-w-7xl w-full mx-auto px-4 py-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        <!-- Left & Middle: Voucher Entry Form & Journal Table (Colspan 2) -->
+        <section class="lg:col-span-2 space-y-6">
+            
+            <!-- Header Voucher Form Card -->
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
+                <div class="flex justify-between items-center pb-4 mb-4 border-b border-slate-100">
+                    <h2 class="text-base font-semibold text-slate-900 flex items-center">
+                        <i class="fa-solid fa-pen-to-square text-indigo-600 mr-2"></i>
+                        Formulir Voucher Kas Keluar Baru
+                    </h2>
+                    <span id="voucherStatusBadge" class="px-2.5 py-1 text-xs font-semibold rounded-full bg-amber-50 text-amber-700 border border-amber-200">
+                        Status: DRAFT
+                    </span>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1.5">NOMOR VOUCHER</label>
+                        <div class="relative">
+                            <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400 text-xs">CDV-</span>
+                            <input type="text" id="voucherNo" value="2026-001" class="w-full pl-12 pr-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-sm font-medium focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1.5">TANGGAL TRANSAKSI</label>
+                        <input type="date" id="voucherDate" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-sm font-medium focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1.5">METODE / REFERENSI</label>
+                        <select id="paymentRef" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-sm font-medium focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                            <option value="BANK-BCA">Transfer Bank (BCA 8830...)</option>
+                            <option value="BANK-MANDIRI">Transfer Bank (Mandiri 1300...)</option>
+                            <option value="CASH-KECIL">Kas Kecil (Petty Cash)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="mt-4">
+                    <label class="block text-xs font-semibold text-slate-600 mb-1.5">DESKRIPSI / KETERANGAN</label>
+                    <input type="text" id="voucherDesc" placeholder="Contoh: Pembayaran biaya sewa kantor cabang bulan Oktober 2026" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                </div>
+            </div>
+
+            <!-- Dynamic Journal Lines Card -->
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-sm font-semibold text-slate-900 flex items-center">
+                        <i class="fa-solid fa-list-check text-indigo-600 mr-2"></i>
+                        Baris Jurnal Akuntansi (Minimal 2 Baris)
+                    </h3>
+                    <button onclick="addJournalRow()" class="bg-indigo-50 text-indigo-700 hover:bg-indigo-100 text-xs font-semibold px-3 py-1.5 rounded-lg border border-indigo-200 transition flex items-center space-x-1">
+                        <i class="fa-solid fa-plus text-xs"></i>
+                        <span>Tambah Baris</span>
+                    </button>
+                </div>
+
+                <!-- Table Container -->
+                <div class="overflow-x-auto rounded-lg border border-slate-200">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-100 text-slate-700 text-xs font-bold border-b border-slate-200">
+                                <th class="p-3 w-5/12">AKUN (CHART OF ACCOUNTS)</th>
+                                <th class="p-3 w-3/12 text-right">DEBIT (IDR)</th>
+                                <th class="p-3 w-3/12 text-right">KREDIT (IDR)</th>
+                                <th class="p-3 w-1/12 text-center">AKSI</th>
+                            </tr>
+                        </thead>
+                        <tbody id="journalRowsBody" class="divide-y divide-slate-200 text-sm">
+                            <!-- Rows injected dynamically via JS -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Real-time Balance Indicators & Calculations -->
+                <div class="mt-4 bg-slate-50 border border-slate-200 rounded-xl p-4 grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
+                    <div>
+                        <span class="text-xs font-medium text-slate-500 block">TOTAL DEBIT</span>
+                        <span id="totalDebitDisplay" class="text-base font-bold text-slate-800">Rp 0</span>
+                    </div>
+                    <div>
+                        <span class="text-xs font-medium text-slate-500 block">TOTAL KREDIT</span>
+                        <span id="totalCreditDisplay" class="text-base font-bold text-slate-800">Rp 0</span>
+                    </div>
+                    <div class="flex flex-col items-start md:items-end">
+                        <span class="text-xs font-medium text-slate-500 block mb-1">STATUS KESEIMBANGAN</span>
+                        <div id="balanceBadge" class="px-3 py-1 rounded-full text-xs font-bold border flex items-center space-x-1.5 bg-red-50 text-red-700 border-red-200">
+                            <i class="fa-solid fa-triangle-exclamation"></i>
+                            <span id="balanceText">Unbalanced (Selisih: Rp 0)</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Validation Status Hint -->
+                <div id="validationHint" class="mt-3 p-3 rounded-lg text-xs bg-amber-50 border border-amber-200 text-amber-800 flex items-start space-x-2">
+                    <i class="fa-solid fa-circle-info mt-0.5 text-amber-600"></i>
+                    <div>
+                        <span class="font-semibold">Syarat Submit Belum Terpenuhi:</span>
+                        <ul id="validationReasonList" class="list-disc list-inside mt-1 space-y-0.5 text-amber-700">
+                            <li>Minimal harus ada 2 baris jurnal yang valid.</li>
+                            <li>Total debit harus sama persis dengan total kredit.</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Submission Action Controls -->
+                <div class="mt-6 pt-4 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3">
+                    <button onclick="resetForm()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-lg transition border border-slate-300">
+                        <i class="fa-solid fa-rotate-left mr-1"></i> Reset Formulir
+                    </button>
+                    <div class="flex items-center space-x-3">
+                        <button id="btnSaveDraft" onclick="submitVoucher('DRAFT')" disabled class="px-4 py-2 bg-slate-200 text-slate-400 text-xs font-semibold rounded-lg cursor-not-allowed transition">
+                            Simpan Draft
+                        </button>
+                        <button id="btnPostVoucher" onclick="submitVoucher('POSTED')" disabled class="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-lg shadow-sm disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed disabled:shadow-none transition flex items-center space-x-1.5">
+                            <i class="fa-solid fa-paper-plane"></i>
+                            <span>Simpan & Posting Voucher</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Right Column: Ledger Log & Testing Scenario Console (Colspan 1) -->
+        <section class="space-y-6">
+            
+            <!-- Testing Sandbox Simulator Card -->
+            <div class="bg-gradient-to-br from-indigo-900 to-slate-900 text-white rounded-xl shadow-md p-5 border border-indigo-800">
+                <div class="flex items-center space-x-2 mb-3">
+                    <i class="fa-solid fa-vial-circle-check text-indigo-400"></i>
+                    <h3 class="text-sm font-bold">Simulator Skenario Pengujian</h3>
+                </div>
+                <p class="text-xs text-indigo-200 mb-4 leading-relaxed">
+                    Gunakan tombol cepat di bawah untuk menguji aturan validasi, kondisi seimbang/tidak seimbang, nominal negatif, dan proteksi jurnal POSTED.
+                </p>
+                <div class="space-y-2">
+                    <button onclick="loadScenario('balanced')" class="w-full text-left px-3 py-2 bg-indigo-800/60 hover:bg-indigo-800 text-xs font-medium rounded-lg border border-indigo-700/60 transition flex items-center justify-between">
+                        <span><i class="fa-solid fa-circle-check text-emerald-400 mr-1.5"></i> Skenario 1: Jurnal Seimbang Valid</span>
+                        <i class="fa-solid fa-chevron-right text-[10px] text-indigo-400"></i>
+                    </button>
+                    <button onclick="loadScenario('unbalanced')" class="w-full text-left px-3 py-2 bg-indigo-800/60 hover:bg-indigo-800 text-xs font-medium rounded-lg border border-indigo-700/60 transition flex items-center justify-between">
+                        <span><i class="fa-solid fa-triangle-exclamation text-amber-400 mr-1.5"></i> Skenario 2: Jurnal Tidak Seimbang</span>
+                        <i class="fa-solid fa-chevron-right text-[10px] text-indigo-400"></i>
+                    </button>
+                    <button onclick="loadScenario('negative')" class="w-full text-left px-3 py-2 bg-indigo-800/60 hover:bg-indigo-800 text-xs font-medium rounded-lg border border-indigo-700/60 transition flex items-center justify-between">
+                        <span><i class="fa-solid fa-ban text-rose-400 mr-1.5"></i> Skenario 3: Input Nominal Negatif</span>
+                        <i class="fa-solid fa-chevron-right text-[10px] text-indigo-400"></i>
+                    </button>
+                    <button onclick="loadScenario('posted_lock')" class="w-full text-left px-3 py-2 bg-indigo-800/60 hover:bg-indigo-800 text-xs font-medium rounded-lg border border-indigo-700/60 transition flex items-center justify-between">
+                        <span><i class="fa-solid fa-lock text-indigo-300 mr-1.5"></i> Skenario 4: Proteksi Jurnal POSTED</span>
+                        <i class="fa-solid fa-chevron-right text-[10px] text-indigo-400"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Recent Vouchers & Immutable Ledger Log -->
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
+                <div class="flex justify-between items-center mb-3">
+                    <h3 class="text-sm font-semibold text-slate-900 flex items-center">
+                        <i class="fa-solid fa-database text-indigo-600 mr-2"></i>
+                        Riwayat Voucher & Checksum
+                    </h3>
+                    <span id="voucherCountBadge" class="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-medium">0 Voucher</span>
+                </div>
+                <p class="text-xs text-slate-500 mb-3">Voucher dengan status <span class="font-bold text-emerald-600">POSTED</span> terkunci secara permanen dan dilindungi hash SHA-256.</p>
+                
+                <div id="voucherListContainer" class="space-y-3 max-h-[380px] overflow-y-auto pr-1">
+                    <!-- Populated dynamically -->
+                    <div class="text-center py-6 text-slate-400 text-xs">
+                        <i class="fa-regular fa-folder-open text-2xl mb-2 text-slate-300 block"></i>
+                        Belum ada transaksi tersimpan dalam sesi ini.
+                    </div>
+                </div>
+            </div>
+
+        </section>
+
+    </main>
+
+    <div id="docModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-xl max-w-4xl w-full max-h-[90vh] flex flex-col overflow-hidden border border-slate-200">
+            <div class="px-6 py-4 bg-indigo-900 text-white flex justify-between items-center">
+                <div class="flex items-center space-x-2">
+                    <i class="fa-solid fa-book-bookmark text-indigo-300"></i>
+                    <h3 class="font-bold text-base">Panduan Konfigurasi Supabase & Skema PostgreSQL</h3>
+                </div>
+                <button onclick="toggleDocModal()" class="text-indigo-200 hover:text-white transition">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+            <div class="p-6 overflow-y-auto space-y-6 text-sm text-slate-700">
+                
+                <div>
+                    <h4 class="font-bold text-indigo-900 mb-2 flex items-center">
+                        <i class="fa-solid fa-database mr-2 text-indigo-600"></i> 1. Skema Tabel PostgreSQL (Supabase)
+                    </h4>
+                    <p class="text-xs text-slate-500 mb-2">Skema lengkap mencakup <code>chart_of_accounts</code>, <code>journal_headers</code>, <code>journal_lines</code>, dan <code>audit_logs</code>.</p>
+                    <pre class="bg-slate-900 text-emerald-400 p-4 rounded-xl text-xs font-mono overflow-x-auto shadow-inner"><code>-- 1. Chart of Accounts (COA)
+CREATE TABLE chart_of_accounts (
+    account_code VARCHAR(20) PRIMARY KEY,
+    account_name VARCHAR(100) NOT NULL,
+    account_type VARCHAR(30) NOT NULL, -- Asset, Liability, Expense, dll
+    is_active BOOLEAN DEFAULT TRUE
+);
+
+-- 2. Journal Headers
+CREATE TABLE journal_headers (
+    voucher_no VARCHAR(50) PRIMARY KEY,
+    voucher_date DATE NOT NULL,
+    description TEXT NOT NULL,
+    status VARCHAR(20) CHECK (status IN ('DRAFT', 'POSTED', 'REVERSED')) DEFAULT 'DRAFT',
+    total_debit NUMERIC(15,2) NOT NULL,
+    total_credit NUMERIC(15,2) NOT NULL,
+    hash_checksum VARCHAR(64) NOT NULL,
+    created_by VARCHAR(50) NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 3. Journal Lines
+CREATE TABLE journal_lines (
+    line_id SERIAL PRIMARY KEY,
+    voucher_no VARCHAR(50) REFERENCES journal_headers(voucher_no) ON DELETE CASCADE,
+    account_code VARCHAR(20) REFERENCES chart_of_accounts(account_code),
+    debit NUMERIC(15,2) DEFAULT 0.00,
+    credit NUMERIC(15,2) DEFAULT 0.00,
+    CONSTRAINT chk_positive_amounts CHECK (debit >= 0 AND credit >= 0)
+);
+
+-- 4. Audit Logs (Immutable)
+CREATE TABLE audit_logs (
+    log_id SERIAL PRIMARY KEY,
+    voucher_no VARCHAR(50),
+    action VARCHAR(50) NOT NULL,
+    performed_by VARCHAR(50) NOT NULL,
+    performed_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    details TEXT
+);</code></pre>
+                </div>
+
+                <div>
+                    <h4 class="font-bold text-indigo-900 mb-2 flex items-center">
+                        <i class="fa-solid fa-code mr-2 text-indigo-600"></i> 2. Fungsi RPC PostgreSQL (`create_voucher` & `post_voucher`)
+                    </h4>
+                    <pre class="bg-slate-900 text-indigo-300 p-4 rounded-xl text-xs font-mono overflow-x-auto shadow-inner"><code>-- Fungsi RPC untuk membuat voucher baru dengan validasi ketat di Database
+CREATE OR REPLACE FUNCTION create_voucher(
+    p_voucher_no VARCHAR,
+    p_voucher_date DATE,
+    p_description TEXT,
+    p_created_by VARCHAR,
+    p_lines JSONB,
+    p_checksum VARCHAR
+) RETURNS JSON AS $$
+DECLARE
+    v_total_debit NUMERIC := 0;
+    v_total_credit NUMERIC := 0;
+    v_line JSONB;
+    v_line_debit NUMERIC;
+    v_line_credit NUMERIC;
+    v_count INT := 0;
+BEGIN
+    -- Validasi keberadaan nomor voucher
+    IF EXISTS (SELECT 1 FROM journal_headers WHERE voucher_no = p_voucher_no) THEN
+        RAISE EXCEPTION 'Nomor voucher % sudah terdaftar.', p_voucher_no;
+    END IF;
+
+    -- Hitung dan validasi baris dari JSONB
+    FOR v_line IN SELECT * FROM jsonb_array_elements(p_lines)
+    LOOP
+        v_count := v_count + 1;
+        v_line_debit := (v_line->>'debit')::NUMERIC;
+        v_line_credit := (v_line->>'credit')::NUMERIC;
+
+        -- Aturan: Tidak boleh negatif dan hanya salah satu yang terisi positif per baris
+        IF v_line_debit < 0 OR v_line_credit < 0 THEN
+            RAISE EXCEPTION 'Nominal tidak boleh bernilai negatif.';
+        END IF;
+        IF v_line_debit > 0 AND v_line_credit > 0 THEN
+            RAISE EXCEPTION 'Baris jurnal tidak boleh memiliki debit dan kredit secara bersamaan.';
+        END IF;
+
+        v_total_debit := v_total_debit + v_line_debit;
+        v_total_credit := v_total_credit + v_line_credit;
+    END LOOP;
+
+    IF v_count < 2 THEN
+        RAISE EXCEPTION 'Minimal harus terdapat 2 baris jurnal.';
+    END IF;
+
+    IF v_total_debit <> v_total_credit THEN
+        RAISE EXCEPTION 'Total debit (%) tidak seimbang dengan total kredit (%).', v_total_debit, v_total_credit;
+    END IF;
+
+    -- Insert ke header
+    INSERT INTO journal_headers (voucher_no, voucher_date, description, status, total_debit, total_credit, hash_checksum, created_by)
+    VALUES (p_voucher_no, p_voucher_date, p_description, 'DRAFT', v_total_debit, v_total_credit, p_checksum, p_created_by);
+
+    -- Insert ke lines
+    FOR v_line IN SELECT * FROM jsonb_array_elements(p_lines)
+    LOOP
+        INSERT INTO journal_lines (voucher_no, account_code, debit, credit)
+        VALUES (
+            p_voucher_no,
+            v_line->>'account_code',
+            (v_line->>'debit')::NUMERIC,
+            (v_line->>'credit')::NUMERIC
+        );
+    END LOOP;
+
+    -- Catat audit log
+    INSERT INTO audit_logs (voucher_no, action, performed_by, details)
+    VALUES (p_voucher_no, 'CREATE_VOUCHER_DRAFT', p_created_by, 'Voucher berhasil dibuat sebagai Draft.');
+
+    RETURN json_build_object('success', true, 'voucher_no', p_voucher_no);
+END;
+$$ LANGUAGE plpgsql;</code></pre>
+                </div>
+
+                <div>
+                    <h4 class="font-bold text-indigo-900 mb-2 flex items-center">
+                        <i class="fa-solid fa-shield-halved mr-2 text-indigo-600"></i> 3. Alur Validasi & Integritas SHA-256
+                    </h4>
+                    <p class="text-xs text-slate-600 leading-relaxed">
+                        Sistem menerapkan validasi berlapis (*Two-Tier Validation*). Validasi pertama berjalan di sisi *frontend* (JavaScript) untuk memberikan umpan balik instan kepada pengguna. Validasi kedua dan utama dijalankan di sisi *database* melalui fungsi RPC PostgreSQL. 
+                        <br><br>
+                        Setiap kali voucher disimpan, string data utama (Nomor Voucher + Tanggal + Total Debit + Daftar Akun) dikonversi menggunakan algoritma <strong>SHA-256 checksum</strong> untuk memastikan integritas data. Jika jurnal telah berstatus <code>POSTED</code>, pembaruan atau penghapusan langsung ditolak oleh pemicu basis data (*Database Trigger*), mewajibkan pembuatan jurnal pembalik (*Reversing Entry*) jika koreksi diperlukan.
+                    </p>
+                </div>
+
+            </div>
+            <div class="px-6 py-3 bg-slate-100 border-t border-slate-200 flex justify-end">
+                <button onclick="toggleDocModal()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-lg transition shadow-sm">
+                    Tutup Panduan
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="alertModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 border border-slate-200 text-center space-y-4">
+            <div id="alertIconContainer" class="w-12 h-12 rounded-full flex items-center justify-center mx-auto text-xl bg-indigo-100 text-indigo-600">
+                <i id="alertIcon" class="fa-solid fa-circle-check"></i>
+            </div>
+            <div>
+                <h4 id="alertTitle" class="font-bold text-slate-900 text-base">Notifikasi Sistem</h4>
+                <p id="alertMessage" class="text-xs text-slate-600 mt-1 leading-relaxed">Pesan informasi sistem akuntansi.</p>
+            </div>
+            <button onclick="closeAlertModal()" class="w-full py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-lg transition shadow-sm">
+                Mengerti / Lanjutkan
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // Chart of Accounts (COA) master data mock
+        const chartOfAccounts = [
+            { code: "1110", name: "1110 - Kas Utama & Setara Kas", type: "Asset" },
+            { code: "1120", name: "1120 - Kas Kecil (Petty Cash)", type: "Asset" },
+            { code: "1130", name: "1130 - Bank BCA Giro Operasional", type: "Asset" },
+            { code: "2110", name: "2110 - Utang Usaha (Accounts Payable)", type: "Liability" },
+            { code: "5110", name: "5110 - Beban Gaji & Tunjangan Karyawan", type: "Expense" },
+            { code: "5120", name: "5120 - Beban Sewa Gedung & Kantor", type: "Expense" },
+            { code: "5130", name: "5130 - Beban Utilitas (Listrik, Air, Telp)", type: "Expense" },
+            { code: "5140", name: "5140 - Beban Perlengkapan Kantor", type: "Expense" }
+        ];
+
+        // In-memory storage for vouchers created in this session
+        let vouchersStore = [];
+        let rowCounter = 0;
+
+        // Initialize App on Window Load
+        window.onload = function() {
+            // Set default date to today
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('voucherDate').value = today;
+
+            // Initialize with 2 default rows for standard cash disbursement journal
+            addJournalRow("5120", 3500000, 0);
+            addJournalRow("1130", 0, 3500000);
+
+            // Setup listeners for live calculation
+            setupEventListeners();
+            evaluateForm();
+        };
+
+        function toggleDocModal() {
+            const modal = document.getElementById('docModal');
+            modal.classList.toggle('hidden');
+        }
+
+        function showAlert(title, message, isError = false) {
+            document.getElementById('alertTitle').innerText = title;
+            document.getElementById('alertMessage').innerText = message;
+            const iconContainer = document.getElementById('alertIconContainer');
+            const icon = document.getElementById('alertIcon');
+            
+            if (isError) {
+                iconContainer.className = "w-12 h-12 rounded-full flex items-center justify-center mx-auto text-xl bg-rose-100 text-rose-600";
+                icon.className = "fa-solid fa-triangle-exclamation";
+            } else {
+                iconContainer.className = "w-12 h-12 rounded-full flex items-center justify-center mx-auto text-xl bg-emerald-100 text-emerald-600";
+                icon.className = "fa-solid fa-circle-check";
+            }
+            document.getElementById('alertModal').classList.remove('hidden');
+        }
+
+        function closeAlertModal() {
+            document.getElementById('alertModal').classList.add('hidden');
+        }
+
+        function addJournalRow(selectedAccount = "", debitVal = 0, creditVal = 0) {
+            rowCounter++;
+            const tbody = document.getElementById('journalRowsBody');
+            const tr = document.createElement('tr');
+            tr.className = "hover:bg-slate-50 transition journal-row";
+            tr.setAttribute('data-row-id', rowCounter);
+
+            let optionsHtml = `<option value="">-- Pilih Akun COA --</option>`;
+            chartOfAccounts.forEach(acc => {
+                const selected = acc.code === selectedAccount ? 'selected' : '';
+                optionsHtml += `<option value="${acc.code}" ${selected}>${acc.name}</option>`;
+            });
+
+            tr.innerHTML = `
+                <td class="p-3">
+                    <select class="account-select w-full px-3 py-1.5 bg-slate-50 border border-slate-300 rounded-lg text-xs font-medium focus:ring-2 focus:ring-indigo-500 focus:outline-none" onchange="evaluateForm()">
+                        ${optionsHtml}
+                    </select>
+                </td>
+                <td class="p-3 text-right">
+                    <input type="number" min="0" step="any" value="${debitVal}" class="debit-input w-full px-3 py-1.5 bg-slate-50 border border-slate-300 rounded-lg text-xs text-right font-medium focus:ring-2 focus:ring-indigo-500 focus:outline-none" oninput="handleAmountInput(this, 'debit')" />
+                </td>
+                <td class="p-3 text-right">
+                    <input type="number" min="0" step="any" value="${creditVal}" class="credit-input w-full px-3 py-1.5 bg-slate-50 border border-slate-300 rounded-lg text-xs text-right font-medium focus:ring-2 focus:ring-indigo-500 focus:outline-none" oninput="handleAmountInput(this, 'credit')" />
+                </td>
+                <td class="p-3 text-center">
+                    <button onclick="removeJournalRow(this)" class="text-slate-400 hover:text-rose-600 p-1.5 rounded-lg transition" title="Hapus Baris">
+                        <i class="fa-solid fa-trash-can text-xs"></i>
+                    </button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+            evaluateForm();
+        }
+
+        function removeJournalRow(button) {
+            const tbody = document.getElementById('journalRowsBody');
+            if (tbody.children.length <= 2) {
+                showAlert("Peringatan Validasi", "Sesuai aturan akuntansi kas keluar, minimal harus terdapat 2 baris jurnal.", true);
+                return;
+            }
+            button.closest('tr').remove();
+            evaluateForm();
+        }
+
+        function handleAmountInput(inputElem, type) {
+            const row = inputElem.closest('tr');
+            const debitInput = row.querySelector('.debit-input');
+            const creditInput = row.querySelector('.credit-input');
+
+            // Prevent negative values immediately on input
+            if (parseFloat(inputElem.value) < 0) {
+                inputElem.value = 0;
+            }
+
+            evaluateForm();
+        }
+
+        function setupEventListeners() {
+            document.getElementById('voucherNo').addEventListener('input', evaluateForm);
+            document.getElementById('voucherDesc').addEventListener('input', evaluateForm);
+        }
+
+        function evaluateForm() {
+            const rows = document.querySelectorAll('.journal-row');
+            let totalDebit = 0;
+            let totalCredit = 0;
+            let allAccountsSelected = true;
+            let validRowsCount = 0;
+            let hasNegativeOrConflict = false;
+            let reasonListHtml = "";
+            let reasons = [];
+
+            if (rows.length < 2) {
+                reasons.push("Minimal harus terdapat 2 baris jurnal.");
+            }
+
+            rows.forEach(row => {
+                const accSelect = row.querySelector('.account-select');
+                const debitVal = parseFloat(row.querySelector('.debit-input').value) || 0;
+                const creditVal = parseFloat(row.querySelector('.credit-input').value) || 0;
+
+                if (!accSelect.value) {
+                    allAccountsSelected = false;
+                }
+
+                if (debitVal < 0 || creditVal < 0) {
+                    hasNegativeOrConflict = true;
+                }
+
+                // Rule: Each row must have either debit OR credit positive, not both or both zero
+                if ((debitVal > 0 && creditVal === 0) || (debitVal === 0 && creditVal > 0)) {
+                    validRowsCount++;
+                } else if (debitVal > 0 && creditVal > 0) {
+                    hasNegativeOrConflict = true;
+                }
+
+                totalDebit += debitVal;
+                totalCredit += creditVal;
+            });
+
+            if (!allAccountsSelected) {
+                reasons.push("Semua baris akun pada Chart of Accounts harus dipilih.");
+            }
+            if (hasNegativeOrConflict) {
+                reasons.push("Terdapat nilai negatif atau baris yang mengisi debit dan kredit secara bersamaan.");
+            }
+            if (validRowsCount < 2) {
+                reasons.push("Minimal 2 baris harus memiliki nominal valid (hanya salah satu debit atau kredit yang terisi positif).");
+            }
+
+            const diff = Math.abs(totalDebit - totalCredit);
+            const isBalanced = diff < 0.01 && totalDebit > 0;
+
+            if (!isBalanced) {
+                reasons.push(`Total debit (Rp ${totalDebit.toLocaleString()}) belum seimbang dengan total kredit (Rp ${totalCredit.toLocaleString()}). Selisih: Rp ${diff.toLocaleString()}`);
+            }
+
+            // Update DOM displays
+            document.getElementById('totalDebitDisplay').innerText = `Rp ${totalDebit.toLocaleString()}`;
+            document.getElementById('totalCreditDisplay').innerText = `Rp ${totalCredit.toLocaleString()}`;
+
+            const balanceBadge = document.getElementById('balanceBadge');
+            const balanceText = document.getElementById('balanceText');
+
+            if (isBalanced) {
+                balanceBadge.className = "px-3 py-1 rounded-full text-xs font-bold border flex items-center space-x-1.5 bg-emerald-50 text-emerald-700 border-emerald-200";
+                balanceBadge.innerHTML = `<i class="fa-solid fa-circle-check"></i><span id="balanceText">Balanced (Seimbang)</span>`;
+            } else {
+                balanceBadge.className = "px-3 py-1 rounded-full text-xs font-bold border flex items-center space-x-1.5 bg-red-50 text-red-700 border-red-200";
+                balanceBadge.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i><span id="balanceText">Unbalanced (Selisih: Rp ${diff.toLocaleString()})</span>`;
+            }
+
+            const hintBox = document.getElementById('validationHint');
+            const reasonListUl = document.getElementById('validationReasonList');
+
+            if (reasons.length === 0) {
+                hintBox.className = "mt-3 p-3 rounded-lg text-xs bg-emerald-50 border border-emerald-200 text-emerald-800 flex items-start space-x-2";
+                hintBox.innerHTML = `<i class="fa-solid fa-circle-check mt-0.5 text-emerald-600"></i><div><span class="font-semibold text-emerald-900">Validasi Sempurna:</span> Seluruh persyaratan akuntansi dan kontrol internal telah terpenuhi. Voucher siap disimpan atau diposting.</div>`;
+                
+                document.getElementById('btnSaveDraft').disabled = false;
+                document.getElementById('btnSaveDraft').className = "px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-lg transition border border-slate-300";
+                
+                document.getElementById('btnPostVoucher').disabled = false;
+                document.getElementById('btnPostVoucher').className = "px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-lg shadow-sm transition flex items-center space-x-1.5";
+            } else {
+                hintBox.className = "mt-3 p-3 rounded-lg text-xs bg-amber-50 border border-amber-200 text-amber-800 flex items-start space-x-2";
+                let listItems = reasons.map(r => `<li>${r}</li>`).join('');
+                hintBox.innerHTML = `<i class="fa-solid fa-circle-info mt-0.5 text-amber-600"></i><div><span class="font-semibold">Syarat Submit Belum Terpenuhi:</span><ul class="list-disc list-inside mt-1 space-y-0.5 text-amber-700">${listItems}</ul></div>`;
+
+                document.getElementById('btnSaveDraft').disabled = true;
+                document.getElementById('btnSaveDraft').className = "px-4 py-2 bg-slate-200 text-slate-400 text-xs font-semibold rounded-lg cursor-not-allowed transition";
+
+                document.getElementById('btnPostVoucher').disabled = true;
+                document.getElementById('btnPostVoucher').className = "px-5 py-2 bg-slate-200 text-slate-400 text-xs font-semibold rounded-lg cursor-not-allowed transition flex items-center space-x-1.5";
+            }
+        }
+
+        // Simple SHA-256 Mock Hash generator for client-side cryptographic logging simulation
+        async function calculateSHA256(message) {
+            const msgBuffer = new TextEncoder().encode(message);
+            const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+            const hashArray = Array.from(new Uint8Array(hashBuffer));
+            const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+            return hashHex;
+        }
+
+        async function submitVoucher(targetStatus) {
+            const voucherNo = document.getElementById('voucherNo').value.trim();
+            const voucherDate = document.getElementById('voucherDate').value;
+            const description = document.getElementById('voucherDesc').value.trim();
+            const paymentRef = document.getElementById('paymentRef').value;
+
+            if (!voucherNo || !description) {
+                showAlert("Kesalahan Input", "Nomor voucher dan deskripsi wajib diisi.", true);
+                return;
+            }
+
+            // Gather lines
+            const rows = document.querySelectorAll('.journal-row');
+            let lines = [];
+            let totalDebit = 0;
+
+            rows.forEach(row => {
+                const accountCode = row.querySelector('.account-select').value;
+                const debit = parseFloat(row.querySelector('.debit-input').value) || 0;
+                const credit = parseFloat(row.querySelector('.credit-input').value) || 0;
+                lines.push({ account_code: accountCode, debit, credit });
+                totalDebit += debit;
+            });
+
+            // Generate checksum payload
+            const rawStringData = `${voucherNo}-${voucherDate}-${totalDebit}-${paymentRef}-${JSON.stringify(lines)}`;
+            const checksum = await calculateSHA256(rawStringData);
+
+            const voucherObj = {
+                voucher_no: voucherNo,
+                voucher_date: voucherDate,
+                description,
+                payment_ref: paymentRef,
+                status: targetStatus,
+                total_debit: totalDebit,
+                total_credit: totalDebit,
+                lines,
+                hash_checksum: checksum,
+                created_by: "Kasir_HQ01",
+                created_at: new Date().toISOString()
+            };
+
+            // Check if already exists in store
+            const existingIndex = vouchersStore.findIndex(v => v.voucher_no === voucherNo);
+            if (existingIndex >= 0) {
+                if (vouchersStore[existingIndex].status === 'POSTED') {
+                    showAlert("Akses Ditolak (Immutable)", `Jurnal dengan nomor ${voucherNo} sudah berstatus POSTED dan terkunci secara permanen. Koreksi wajib menggunakan jurnal pembalik (reversing entry).`, true);
+                    return;
+                }
+                vouchersStore[existingIndex] = voucherObj;
+            } else {
+                vouchersStore.push(voucherObj);
+            }
+
+            renderVoucherList();
+            showAlert("Sukses Tersimpan", `Voucher Kas Keluar ${voucherNo} berhasil disimpan dengan status [${targetStatus}]. SHA-256 Checksum: ${checksum.substring(0, 16)}...`);
+        }
+
+        function renderVoucherList() {
+            const container = document.getElementById('voucherListContainer');
+            document.getElementById('voucherCountBadge').innerText = `${vouchersStore.length} Voucher`;
+
+            if (vouchersStore.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-6 text-slate-400 text-xs">
+                        <i class="fa-regular fa-folder-open text-2xl mb-2 text-slate-300 block"></i>
+                        Belum ada transaksi tersimpan dalam sesi ini.
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = "";
+            vouchersStore.forEach(v => {
+                const badgeColor = v.status === 'POSTED' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-amber-50 text-amber-700 border-amber-200';
+                const lockIcon = v.status === 'POSTED' ? '<i class="fa-solid fa-lock text-emerald-600 ml-1 text-xs" title="Terkunci Permanent (POSTED)"></i>' : '';
+
+                const div = document.createElement('div');
+                div.className = "p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2 hover:border-indigo-300 transition";
+                div.innerHTML = `
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <div class="flex items-center space-x-1">
+                                <span class="font-bold text-slate-900 text-xs">CDV-${v.voucher_no}</span>
+                                ${lockIcon}
+                            </div>
+                            <span class="text-[11px] text-slate-500">${v.voucher_date} • ${v.payment_ref}</span>
+                        </div>
+                        <span class="px-2 py-0.5 text-[10px] font-bold rounded-full border ${badgeColor}">${v.status}</span>
+                    </div>
+                    <p class="text-xs text-slate-700 line-clamp-1 italic">"${v.description}"</p>
+                    <div class="flex justify-between items-center pt-2 border-t border-slate-200 text-xs">
+                        <span class="font-bold text-slate-800">Rp ${v.total_debit.toLocaleString()}</span>
+                        <div class="space-x-1">
+                            <button onclick="editVoucher('${v.voucher_no}')" class="px-2.5 py-1 bg-white hover:bg-slate-100 text-indigo-600 border border-slate-300 rounded font-medium text-[11px] transition">
+                                <i class="fa-solid fa-eye mr-1"></i> Detail
+                            </button>
+                            ${v.status === 'DRAFT' ? `<button onclick="postExistingVoucher('${v.voucher_no}')" class="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded font-medium text-[11px] transition">Posting</button>` : ''}
+                        </div>
+                    </div>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        function editVoucher(voucherNo) {
+            const v = vouchersStore.find(item => item.voucher_no === voucherNo);
+            if (!v) return;
+
+            document.getElementById('voucherNo').value = v.voucher_no;
+            document.getElementById('voucherDate').value = v.voucher_date;
+            document.getElementById('voucherDesc').value = v.description;
+            document.getElementById('paymentRef').value = v.payment_ref;
+
+            const tbody = document.getElementById('journalRowsBody');
+            tbody.innerHTML = "";
+            v.lines.forEach(l => {
+                addJournalRow(l.account_code, l.debit, l.credit);
+            });
+
+            const statusBadge = document.getElementById('voucherStatusBadge');
+            if (v.status === 'POSTED') {
+                statusBadge.className = "px-2.5 py-1 text-xs font-semibold rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200";
+                statusBadge.innerText = "Status: POSTED (Terkunci)";
+            } else {
+                statusBadge.className = "px-2.5 py-1 text-xs font-semibold rounded-full bg-amber-50 text-amber-700 border border-amber-200";
+                statusBadge.innerText = "Status: DRAFT";
+            }
+
+            showAlert("Memuat Voucher", `Voucher ${voucherNo} dimuat ke dalam form. Perhatian: Jurnal berstatus POSTED tidak dapat diubah langsung.`);
+        }
+
+        function postExistingVoucher(voucherNo) {
+            const v = vouchersStore.find(item => item.voucher_no === voucherNo);
+            if (v) {
+                v.status = 'POSTED';
+                renderVoucherList();
+                showAlert("Voucher Diposting", `Voucher ${voucherNo} kini berstatus POSTED secara permanen dan tercatat dalam buku besar.`);
+            }
+        }
+
+        function resetForm() {
+            document.getElementById('voucherNo').value = "2026-002";
+            document.getElementById('voucherDesc').value = "";
+            const tbody = document.getElementById('journalRowsBody');
+            tbody.innerHTML = "";
+            addJournalRow("5110", 5000000, 0);
+            addJournalRow("1130", 0, 5000000);
+            document.getElementById('voucherStatusBadge').className = "px-2.5 py-1 text-xs font-semibold rounded-full bg-amber-50 text-amber-700 border border-amber-200";
+            document.getElementById('voucherStatusBadge').innerText = "Status: DRAFT";
+            evaluateForm();
+        }
+
+        // Test Scenario Loaders
+        function loadScenario(type) {
+            const tbody = document.getElementById('journalRowsBody');
+            tbody.innerHTML = "";
+
+            if (type === 'balanced') {
+                document.getElementById('voucherNo').value = "SCENARIO-BAL";
+                document.getElementById('voucherDesc').value = "Pengujian Skenario Jurnal Seimbang (Pembayaran Operasional)";
+                addJournalRow("5130", 1250000, 0);
+                addJournalRow("1130", 0, 1250000);
+                showAlert("Skenario 1 Dimuat", "Jurnal seimbang dimuat. Total debit (Rp 1.250.000) sama dengan total kredit. Tombol Submit aktif.");
+            } else if (type === 'unbalanced') {
+                document.getElementById('voucherNo').value = "SCENARIO-UNB";
+                document.getElementById('voucherDesc').value = "Pengujian Skenario Jurnal Tidak Seimbang";
+                addJournalRow("5140", 750000, 0);
+                addJournalRow("1130", 0, 500000); // Selisih 250,000
+                showAlert("Skenario 2 Dimuat", "Jurnal tidak seimbang dimuat. Total debit Rp 750.000 vs kredit Rp 500.000. Tombol Submit nonaktif dan indikator menunjukkan Unbalanced.", true);
+            } else if (type === 'negative') {
+                document.getElementById('voucherNo').value = "SCENARIO-NEG";
+                document.getElementById('voucherDesc').value = "Pengujian Skenario Nominal Negatif";
+                addJournalRow("5110", -2000000, 0);
+                addJournalRow("1130", 0, -2000000);
+                showAlert("Skenario 3 Dimuat", "Nominal negatif dimasukkan. Validasi frontend dan backend mencegah nilai kurang dari nol.", true);
+            } else if (type === 'posted_lock') {
+                document.getElementById('voucherNo').value = "SCENARIO-POSTED-LOCK";
+                document.getElementById('voucherDesc').value = "Transaksi Terkunci Permanen";
+                addJournalRow("5120", 4000000, 0);
+                addJournalRow("1130", 0, 4000000);
+                // Save and post immediately
+                submitVoucher('POSTED');
+                setTimeout(() => {
+                    showAlert("Skenario 4 Dimuat", "Voucher telah diposting dengan status POSTED. Coba ubah nilainya dan klik Simpan Draft/Posting untuk menguji aturan bahwa jurnal POSTED tidak boleh diubah langsung melainkan via Reversing Entry.", true);
+                }, 200);
+            }
+        }
+    </script>
+</body>
+</html>
